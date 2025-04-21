@@ -1,0 +1,67 @@
+# Зависимости
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Тестирование
+/coverage
+
+# Сборка
+/dist
+/build
+/out
+
+# Логи и отладка
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Кэш и временные файлы
+.cache
+.temp
+.tmp
+.vite
+.eslintcache
+.stylelintcache
+
+# Окружение
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*

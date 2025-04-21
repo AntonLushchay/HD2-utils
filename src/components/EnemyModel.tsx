@@ -1,0 +1,305 @@
+import React, { useRef, useEffect, useState } from 'react';
+import * as THREE from 'three';
+import { GLTFLoader, GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import '../styles/components/EnemyModel.css';
+
+type Characteristic = {
+  health: number;
+  weakPoint: string;
+  bestTarget: string;
+};
+
+type Characteristics = {
+  [key: string]: Characteristic;
+};
+
+interface EnemyModelProps {
+  modelPath: string;
+  characteristics: Characteristics;
+  modelAvailable?: boolean;
+}
+
+const PART_DISPLAY_NAMES: { [key: string]: string } = {
+  head: 'Голова',
+  body: 'Туловище',
+  legs: 'Конечности',
+  mandibles: 'Жвалы',
+  thorax: 'Грудной панцирь',
+  abdomen: 'Брюшная часть',
+};
+
+const getPartDisplayName = (partName: string): string => PART_DISPLAY_NAMES[partName] || partName;
+
+const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, modelAvailable = true }) => {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const [selectedPart, setSelectedPart] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!mountRef.current) return;
+    const mount = mountRef.current;
+    if (!modelAvailable || !modelPath) {
+      setLoading(false);
+      setError('3D модель отсутствует');
+      return;
+    }
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x333333);
+
+    const gridHelper = new THREE.GridHelper(10, 10);
+    scene.add(gridHelper);
+
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2.5);
+    hemisphereLight.position.set(0, 20, 0);
+    scene.add(hemisphereLight);
+
+    const mainDirectionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    mainDirectionalLight.position.set(1, 2, 4);
+    scene.add(mainDirectionalLight);
+
+    const backDirectionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    backDirectionalLight.position.set(-1, 1, -4);
+    scene.add(backDirectionalLight);
+
+    const camera = new THREE.PerspectiveCamera(50, mount.clientWidth / mount.clientHeight, 0.1, 1000);
+    camera.position.set(0, 2, 10);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+    });
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+
+    mount.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 2;
+    controls.maxDistance = 20;
+
+    controls.mouseButtons = {
+      LEFT: undefined,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.ROTATE,
+    };
+
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+    const loader = new GLTFLoader();
+
+    try {
+      loader.load(
+        modelPath,
+        (gltf: GLTF) => {
+          const loadedModel = gltf.scene;
+          loadedModel.rotation.y = Math.PI;
+
+          const group = new THREE.Group();
+          group.add(loadedModel);
+
+          let meshCount = 0;
+          loadedModel.traverse((object: THREE.Object3D) => {
+            if (object instanceof THREE.Mesh) {
+              meshCount++;
+
+              const simpleMaterial = new THREE.MeshLambertMaterial({
+                color: 0xcccccc,
+                emissive: new THREE.Color(0x333333),
+                side: THREE.DoubleSide,
+                flatShading: false,
+              });
+
+              if (Array.isArray(object.material)) {
+                object.material = object.material.map(() => simpleMaterial.clone());
+              } else {
+                object.material = simpleMaterial.clone();
+              }
+
+              object.visible = true;
+            }
+          });
+
+          const modelBox = new THREE.Box3().setFromObject(loadedModel);
+          const modelCenter = modelBox.getCenter(new THREE.Vector3());
+          const modelSize = modelBox.getSize(new THREE.Vector3());
+
+          loadedModel.position.set(-modelCenter.x, -modelCenter.y, -modelCenter.z);
+
+          const maxDim = Math.max(modelSize.x, modelSize.y, modelSize.z);
+          let scaleFactor = 1;
+          if (maxDim > 0) {
+            const targetSize = 5;
+            scaleFactor = targetSize / maxDim;
+          }
+
+          group.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+          group.updateMatrixWorld(true);
+          const groupBox = new THREE.Box3().setFromObject(group);
+          const groupMinY = groupBox.min.y;
+
+          group.position.set(0, -groupMinY, 0);
+
+          scene.add(group);
+          group.updateMatrixWorld(true);
+
+          const finalGroupBox = new THREE.Box3().setFromObject(group);
+          const finalGroupCenter = finalGroupBox.getCenter(new THREE.Vector3());
+          const finalGroupSize = finalGroupBox.getSize(new THREE.Vector3());
+
+          const idealDistance = Math.max(5, finalGroupSize.length() * 1.5);
+          camera.position.set(0, finalGroupCenter.y, idealDistance);
+          controls.target.copy(finalGroupCenter);
+          controls.update();
+
+          const oldBoxHelper = scene.getObjectByName('boxHelper');
+          if (oldBoxHelper) {
+            scene.remove(oldBoxHelper);
+          }
+          const boxHelper = new THREE.BoxHelper(group, 0x00ff00);
+          boxHelper.name = 'boxHelper';
+          scene.add(boxHelper);
+
+          setLoading(false);
+        },
+        (xhr: ProgressEvent) => {
+          console.log(`${((xhr.loaded / (xhr.total || 1)) * 100).toFixed(2)}% загружено`);
+        },
+        (error: ErrorEvent) => {
+          setError(`Ошибка загрузки модели: ${error.message || 'неизвестная ошибка'}. URL модели: ${modelPath}`);
+          setLoading(false);
+        }
+      );
+    } catch (error: any) {
+      setError(`Исключение при загрузке модели: ${error.message}`);
+      setLoading(false);
+    }
+
+    const resetCamera = () => {
+      const boxTemp = new THREE.Box3();
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          boxTemp.expandByObject(object);
+        }
+      });
+
+      const centerTemp = boxTemp.getCenter(new THREE.Vector3());
+      const sizeTemp = boxTemp.getSize(new THREE.Vector3());
+
+      const distanceTemp = Math.max(5, sizeTemp.length() * 1.5);
+      camera.position.set(0, sizeTemp.y * 0.5, distanceTemp);
+
+      controls.target.copy(centerTemp);
+      controls.update();
+    };
+
+    const resetButton = document.createElement('button');
+    resetButton.textContent = 'Сбросить вид';
+    resetButton.className = 'reset-button';
+    resetButton.addEventListener('click', resetCamera);
+    mount.appendChild(resetButton);
+
+    const handleResize = () => {
+      if (!mountRef.current) return;
+
+      camera.aspect = mount.clientWidth / mount.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+
+      if (mount.contains(resetButton)) {
+        mount.removeChild(resetButton);
+      }
+
+      if (mount.contains(renderer.domElement)) {
+        mount.removeChild(renderer.domElement);
+      }
+
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          if (object.geometry) object.geometry.dispose();
+
+          if (Array.isArray(object.material)) {
+            object.material.forEach((material) => material.dispose());
+          } else if (object.material) {
+            object.material.dispose();
+          }
+        }
+      });
+
+      if (renderer) renderer.dispose();
+    };
+  }, [modelPath, characteristics, modelAvailable, selectedPart]);
+
+  return (
+    <div>
+      <div ref={mountRef} className="model-container" />
+      {loading && (
+        <div className="loading">
+          Загрузка модели...
+        </div>
+      )}
+      {error && (
+        <div className="error">
+          {error}
+          {!modelAvailable && (
+            <div>
+              <p>Модель не найдена. Пожалуйста, добавьте файл модели.</p>
+            </div>
+          )}
+        </div>
+      )}
+      {selectedPart && selectedPart in characteristics && (
+        <div className="characteristics-selected">
+          <div className="characteristics-header">
+            <h3 className="characteristics-title">{getPartDisplayName(selectedPart)}</h3>
+            <button
+              onClick={() => setSelectedPart(null)}
+              className="close-button"
+            >
+              ✕
+            </button>
+          </div>
+          <hr className="characteristics-divider" />
+          <div className="characteristics-content">
+            <p className="characteristics-field">
+              <strong>Здоровье:</strong> {characteristics[selectedPart]?.health || 'Нет данных'}
+            </p>
+            <p className="characteristics-field">
+              <strong>Слабое место:</strong> {characteristics[selectedPart]?.weakPoint || 'Нет данных'}
+            </p>
+            <p className="characteristics-field">
+              <strong>Лучшая цель:</strong> {characteristics[selectedPart]?.bestTarget || 'Нет данных'}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default EnemyModel;

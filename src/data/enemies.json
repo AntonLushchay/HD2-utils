@@ -1,0 +1,71 @@
+[
+  {
+    "id": "Alpha_Commande",
+    "name": "Alpha_Commande",
+    "modelPath": "Alpha_Commande.glb",
+    "characteristics": {
+      "head": {
+        "health": 100,
+        "weakPoint": "Да",
+        "bestTarget": "При точных выстрелах"
+      },
+      "thorax": {
+        "health": 200,
+        "weakPoint": "Нет",
+        "bestTarget": "При групповом огне"
+      },
+      "legs": {
+        "health": 150,
+        "weakPoint": "Да",
+        "bestTarget": "Для замедления противника"
+      },
+      "abdomen": {
+        "health": 180,
+        "weakPoint": "Нет",
+        "bestTarget": "При атаке сзади"
+      },
+      "mandibles": {
+        "health": 80,
+        "weakPoint": "Да",
+        "bestTarget": "Для снижения урона"
+      }
+    }
+  },
+  {
+    "id": "Hulk",
+    "name": "Hulk",
+    "modelPath": "Hulk.glb",
+    "characteristics": {
+      "head": {
+        "health": 300,
+        "weakPoint": "Да",
+        "bestTarget": "При атаке сверху"
+      },
+      "body": {
+        "health": 500,
+        "weakPoint": "Нет",
+        "bestTarget": "Требуется тяжелое вооружение"
+      },
+      "arms": {
+        "health": 250,
+        "weakPoint": "Нет",
+        "bestTarget": "Для снижения урона в ближнем бою"
+      },
+      "legs": {
+        "health": 350,
+        "weakPoint": "Да",
+        "bestTarget": "Для замедления и нарушения устойчивости"
+      }
+    }
+  },
+  {
+    "id": "strider",
+    "name": "Factory Strider",
+    "modelPath": "Automaton_factory_strider.glb",
+    "characteristics": {
+      "head": { "health": 200, "weakPoint": "Cannon", "bestTarget": "Head" },
+      "body": { "health": 800, "weakPoint": "Underbelly", "bestTarget": "Body" },
+      "legs": { "health": 400, "weakPoint": "Joints", "bestTarget": "Legs" }
+    }
+  }
+]
