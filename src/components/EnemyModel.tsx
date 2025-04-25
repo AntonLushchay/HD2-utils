@@ -36,6 +36,7 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -83,19 +84,80 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
     mount.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
+    controlsRef.current = controls;
+
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.minDistance = 2;
     controls.maxDistance = 20;
 
     controls.mouseButtons = {
-      LEFT: undefined,
+      LEFT: THREE.MOUSE.ROTATE,
       MIDDLE: THREE.MOUSE.DOLLY,
-      RIGHT: THREE.MOUSE.ROTATE,
+      RIGHT: THREE.MOUSE.PAN,
     };
+
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN,
+    };
+
+    controls.rotateSpeed = 1.0;
 
     controls.target.set(0, 0, 0);
     controls.update();
+
+    let initialTouchPosition = { x: 0, y: 0 };
+    let initialPinchDistance = 0;
+    let isTouching = false;
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length === 1) {
+        isTouching = true;
+        initialTouchPosition = { 
+          x: event.touches[0].clientX, 
+          y: event.touches[0].clientY 
+        };
+      } else if (event.touches.length === 2) {
+        const dx = event.touches[0].clientX - event.touches[1].clientX;
+        const dy = event.touches[0].clientY - event.touches[1].clientY;
+        initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+      }
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!isTouching || !controlsRef.current) return;
+
+      event.preventDefault();
+
+      if (event.touches.length === 1) {
+        controlsRef.current.enabled = true;
+      } else if (event.touches.length === 2) {
+        const dx = event.touches[0].clientX - event.touches[1].clientX;
+        const dy = event.touches[0].clientY - event.touches[1].clientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        const delta = distance - initialPinchDistance;
+
+        if (delta > 0) {
+          controlsRef.current.object.position.z -= delta * 0.01;
+        } else {
+          controlsRef.current.object.position.z -= delta * 0.01;
+        }
+
+        initialPinchDistance = distance;
+
+        controlsRef.current.update();
+      }
+    };
+
+    const handleTouchEnd = () => {
+      isTouching = false;
+    };
+
+    renderer.domElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+    renderer.domElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+    renderer.domElement.addEventListener('touchend', handleTouchEnd);
 
     const loader = new GLTFLoader();
 
@@ -177,8 +239,9 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
         (xhr: ProgressEvent) => {
           console.log(`${((xhr.loaded / (xhr.total || 1)) * 100).toFixed(2)}% загружено`);
         },
-        (error: ErrorEvent) => {
-          setError(`Ошибка загрузки модели: ${error.message || 'неизвестная ошибка'}. URL модели: ${modelPath}`);
+        (err: unknown) => {
+          const errorMessage = err instanceof Error ? err.message : 'неизвестная ошибка';
+          setError(`Ошибка загрузки модели: ${errorMessage}. URL модели: ${modelPath}`);
           setLoading(false);
         }
       );
@@ -230,6 +293,10 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
 
     return () => {
       window.removeEventListener('resize', handleResize);
+
+      renderer.domElement.removeEventListener('touchstart', handleTouchStart);
+      renderer.domElement.removeEventListener('touchmove', handleTouchMove);
+      renderer.domElement.removeEventListener('touchend', handleTouchEnd);
 
       if (mount.contains(resetButton)) {
         mount.removeChild(resetButton);

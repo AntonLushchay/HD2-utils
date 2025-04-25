@@ -67,5 +67,15 @@
       "body": { "health": 800, "weakPoint": "Underbelly", "bestTarget": "Body" },
       "legs": { "health": 400, "weakPoint": "Joints", "bestTarget": "Legs" }
     }
+  },
+  {
+    "id": "turret",
+    "name": "Turret",
+    "modelPath": "turret.glb",
+    "characteristics": {
+      "head": { "health": 150, "weakPoint": "Да", "bestTarget": "Сенсоры" },
+      "body": { "health": 400, "weakPoint": "Нет", "bestTarget": "Силовой блок" },
+      "legs": { "health": 200, "weakPoint": "Да", "bestTarget": "Шарниры" }
+    }
   }
 ]

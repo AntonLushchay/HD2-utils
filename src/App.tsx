@@ -14,12 +14,14 @@ declare module '*.glb?url' {
 import AlphaCommandeModel from './assets/models/Alpha_Commande.glb?url';
 import HulkModel from './assets/models/Hulk.glb?url';
 import StriderModel from './assets/models/Automaton_factory_strider.glb?url';
+import TurretModel from './assets/models/turret.glb?url';
 
 // Маппинг имен файлов на действительные URL ресурсов
 const modelPaths: Record<string, string> = {
   'Alpha_Commande.glb': AlphaCommandeModel,
   'Hulk.glb': HulkModel,
-  'Automaton_factory_strider.glb': StriderModel
+  'Automaton_factory_strider.glb': StriderModel,
+  'turret.glb': TurretModel
 };
 
 const App: React.FC = () => {
