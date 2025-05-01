@@ -37,10 +37,35 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+
+  const clearScene = () => {
+    if (sceneRef.current) {
+      while (sceneRef.current.children.length > 0) {
+        const object = sceneRef.current.children[0];
+        if (object instanceof THREE.Mesh) {
+          if (object.geometry) object.geometry.dispose();
+          if (Array.isArray(object.material)) {
+            object.material.forEach((material) => material.dispose());
+          } else if (object.material) {
+            object.material.dispose();
+          }
+        }
+        sceneRef.current.remove(object);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!mountRef.current) return;
     const mount = mountRef.current;
+
+    clearScene();
+
+    setError(null);
+    setLoading(true);
+
     if (!modelAvailable || !modelPath) {
       setLoading(false);
       setError('3D модель отсутствует');
@@ -48,6 +73,7 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
     }
 
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
     scene.background = new THREE.Color(0x333333);
 
     const gridHelper = new THREE.GridHelper(10, 10);
@@ -72,6 +98,7 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
       antialias: true,
       alpha: false,
     });
+    rendererRef.current = renderer;
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
@@ -165,10 +192,17 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
       loader.load(
         modelPath,
         (gltf: GLTF) => {
+          scene.children.forEach(child => {
+            if (child.name === 'modelGroup' || child.name === 'boxHelper') {
+              scene.remove(child);
+            }
+          });
+
           const loadedModel = gltf.scene;
           loadedModel.rotation.y = Math.PI;
 
           const group = new THREE.Group();
+          group.name = 'modelGroup';
           group.add(loadedModel);
 
           let meshCount = 0;
@@ -237,7 +271,7 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
           setLoading(false);
         },
         (xhr: ProgressEvent) => {
-          console.log(`${((xhr.loaded / (xhr.total || 1)) * 100).toFixed(2)}% загружено`);
+          // Тихая обработка прогресса загрузки без вывода в консоль
         },
         (err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : 'неизвестная ошибка';
@@ -294,9 +328,11 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
     return () => {
       window.removeEventListener('resize', handleResize);
 
-      renderer.domElement.removeEventListener('touchstart', handleTouchStart);
-      renderer.domElement.removeEventListener('touchmove', handleTouchMove);
-      renderer.domElement.removeEventListener('touchend', handleTouchEnd);
+      if (renderer.domElement) {
+        renderer.domElement.removeEventListener('touchstart', handleTouchStart);
+        renderer.domElement.removeEventListener('touchmove', handleTouchMove);
+        renderer.domElement.removeEventListener('touchend', handleTouchEnd);
+      }
 
       if (mount.contains(resetButton)) {
         mount.removeChild(resetButton);
@@ -306,17 +342,7 @@ const EnemyModel: React.FC<EnemyModelProps> = ({ modelPath, characteristics, mod
         mount.removeChild(renderer.domElement);
       }
 
-      scene.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          if (object.geometry) object.geometry.dispose();
-
-          if (Array.isArray(object.material)) {
-            object.material.forEach((material) => material.dispose());
-          } else if (object.material) {
-            object.material.dispose();
-          }
-        }
-      });
+      clearScene();
 
       if (renderer) renderer.dispose();
     };

@@ -16,4 +16,16 @@ export default defineConfig({
     port: 3000,
   },
   assetsInclude: ['**/*.gltf', '**/*.glb'],
+  // Добавляем явные настройки для TypeScript
+  resolve: {
+    extensions: ['.js', '.jsx', '.ts', '.tsx']
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom']
+  },
+  esbuild: {
+    loader: 'tsx',
+    include: /\.(tsx?|jsx?)$/,
+    exclude: []
+  }
 });

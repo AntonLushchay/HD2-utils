@@ -1,7 +1,8 @@
 [
   {
     "id": "Alpha_Commande",
-    "name": "Alpha_Commande",
+    "name": "Alpha Commande",
+    "category": "Termenids",
     "modelPath": "Alpha_Commande.glb",
     "characteristics": {
       "head": {
@@ -34,6 +35,7 @@
   {
     "id": "Hulk",
     "name": "Hulk",
+    "category": "Automatons",
     "modelPath": "Hulk.glb",
     "characteristics": {
       "head": {
@@ -61,6 +63,7 @@
   {
     "id": "strider",
     "name": "Factory Strider",
+    "category": "Automatons",
     "modelPath": "Automaton_factory_strider.glb",
     "characteristics": {
       "head": { "health": 200, "weakPoint": "Cannon", "bestTarget": "Head" },
@@ -71,6 +74,7 @@
   {
     "id": "turret",
     "name": "Turret",
+    "category": "Automatons",
     "modelPath": "turret.glb",
     "characteristics": {
       "head": { "health": 150, "weakPoint": "Да", "bestTarget": "Сенсоры" },
